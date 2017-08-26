@@ -279,7 +279,9 @@ int main() {
             // find the closest car in front of my car
             int my_lane = find_lane_number(car_d);
             double max_dist_to_car_ahead = 10000;
-            int car_in_front_id;
+            int car_in_front_id = -1;
+            double car_in_front_v = -100;
+            double car_in_front_s = -100;
             for (int i=0; i<sensor_fusion.size(); i++)
             {
                 auto other_car = sensor_fusion[i];
@@ -294,10 +296,26 @@ int main() {
                     {
                         max_dist_to_car_ahead = dist_ahead;
                         car_in_front_id = other_car[0];
+                        double vx = other_car[3];
+                        double vy = other_car[4];
+                        car_in_front_v = sqrt(vx*vx + vy*vy);
+                        car_in_front_s = other_car[5];
                     }
                 }
             }
-            std::cout << "dist ahead = " <<  max_dist_to_car_ahead << " from car number " << car_in_front_id << "\n";
+
+            // alert when collision with car in front in imminent
+            double time_to_collision = 0.5; // seconds
+            double keep_distance = 5.0; // meters
+            if (car_in_front_id > -1)
+            {
+                std::cout << " car in front (s, v) = " << car_in_front_s << ", " << car_in_front_v << " , my (s, v) = " << car_s << ", " << car_speed << "\n";
+                double dis = car_in_front_s - car_s + (car_in_front_v - car_speed) * time_to_collision;
+                std::cout << "dist now = " <<  max_dist_to_car_ahead << " dist proj " << dis << "\n";
+                if (dis < keep_distance)
+                    std::cout << "!!!!!!!!!!!!!!!!!!!!!!!collision within 5 seconds, dis = " << dis << " \n";
+            }
+
 
             for(int i = 0; i < 50; i++) // 50 points -> 1 s
             {
