@@ -9,6 +9,7 @@
 #include "Eigen-3.3/Eigen/QR"
 #include "json.hpp"
 #include <assert.h>
+#include <typeinfo>
 
 using namespace std;
 
@@ -275,6 +276,29 @@ int main() {
                 //assert (1==2);
             }
 
+            // find the closest car in front of my car
+            int my_lane = find_lane_number(car_d);
+            double max_dist_to_car_ahead = 10000;
+            int car_in_front_id;
+            for (int i=0; i<sensor_fusion.size(); i++)
+            {
+                auto other_car = sensor_fusion[i];
+                // sensor fusion array: id, x, y, vx, vy, s, d
+                int lane_num = find_lane_number(other_car[6]);
+                if ((lane_num == my_lane) && ((double) other_car[5] > car_s))
+                {
+                    double front_x = other_car[1];
+                    double front_y = other_car[2];
+                    double dist_ahead = distance(car_x, car_y, front_x, front_y);
+                    if (dist_ahead < max_dist_to_car_ahead)
+                    {
+                        max_dist_to_car_ahead = dist_ahead;
+                        car_in_front_id = other_car[0];
+                    }
+                }
+            }
+            std::cout << "dist ahead = " <<  max_dist_to_car_ahead << " from car number " << car_in_front_id << "\n";
+
             for(int i = 0; i < 50; i++) // 50 points -> 1 s
             {
                 // increase speed gradually
@@ -288,27 +312,6 @@ int main() {
                 double new_s = car_s + dist_inc;
                 std::cout << "i = " << i << ", " << "t = " << t << ", " << "v = " << speed << std::endl;
                 */
-
-                // find the closest car in front of my car
-                int my_lane = find_lane_number(car_d);
-                double max_dist_to_car_ahead = 10000;
-                auto car_in_front;
-                for (int i=0; i<sensor_fusion.size(); i++)
-                {
-                    int l = sensor_fusion[i].size();
-                    auto car_lane = sensor_fusion[i][l-1];
-                    int lane_num = find_lane_number(car_lane);
-                    if (lane_num == my_lane)
-                    {
-                        car_in_front = sensor_fusion[i];
-                        double front_x = sensor_fusion[i][1];
-                        double front_y = sensor_fusion[i][2];
-                        double dist_ahead = distance(car_x, car_y, front_x, front_y);
-                        if (dist_ahead < max_dist_to_car_ahead)
-                            max_dist_to_car_ahead = dist_ahead;
-                    }
-                }
-                std::cout << "dist ahead = " <<  max_dist_to_car_ahead << "\n";
 
                 // find the distance to the closest car in front
 
