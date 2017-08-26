@@ -8,6 +8,7 @@
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
 #include "json.hpp"
+#include <assert.h>
 
 using namespace std;
 
@@ -37,6 +38,18 @@ string hasData(string s) {
 double distance(double x1, double y1, double x2, double y2)
 {
 	return sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));
+}
+
+int find_lane_number(double car_lane)
+{
+    // find the lane number from the d value
+    // using lane width = 4 m
+    if (car_lane > 8)
+        return (3);
+    else if (car_lane > 4)
+        return (2);
+    else
+        return (1);
 }
 
 int ClosestWaypoint(double x, double y, vector<double> maps_x, vector<double> maps_y)
@@ -241,13 +254,78 @@ int main() {
 
           	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
             //
+            std::cout << "size of previous path = " << previous_path_x.size() << std::endl;
+            // find other cars in the target lane
+
+            double delta_t = 0.02; // 20 ms
             double dist_inc = 0.5; // meters
-            for(int i = 0; i < 50; i++)
+            double speed_limit = 50; // miles/hr
+            speed_limit *= (1.6e3 / 3600); // m/s
+            double alpha = 10.0;
+
+            // test previous path
+            if (previous_path_x.size() > 10)
             {
+                //for (int i=0; i<previous_path_x.size(); i++)
+                    //std::cout << previous_path_x[i] << ", " << previous_path_y[i] << std::endl;
+                std::cout << "--------------\n";
+                int i = previous_path_x.size() - 1;
+                std::cout << "(x, y) = " << previous_path_x[i] << ", " << previous_path_y[i] << std::endl;
+                std::cout << "(s, d) = " << end_path_s << ", " << end_path_d << std::endl;
+                //assert (1==2);
+            }
+
+            for(int i = 0; i < 50; i++) // 50 points -> 1 s
+            {
+                // increase speed gradually
+                /*
+                double t = (i + 1) * delta_t;
+                double speed = speed_limit * (1 - exp(-alpha * t));
+                if (speed > speed_limit) 
+                    speed = speed_limit;
+
+                dist_inc =  speed * t;
+                double new_s = car_s + dist_inc;
+                std::cout << "i = " << i << ", " << "t = " << t << ", " << "v = " << speed << std::endl;
+                */
+
+                // find the closest car in front of my car
+                int my_lane = find_lane_number(car_d);
+                double max_dist_to_car_ahead = 10000;
+                auto car_in_front;
+                for (int i=0; i<sensor_fusion.size(); i++)
+                {
+                    int l = sensor_fusion[i].size();
+                    auto car_lane = sensor_fusion[i][l-1];
+                    int lane_num = find_lane_number(car_lane);
+                    if (lane_num == my_lane)
+                    {
+                        car_in_front = sensor_fusion[i];
+                        double front_x = sensor_fusion[i][1];
+                        double front_y = sensor_fusion[i][2];
+                        double dist_ahead = distance(car_x, car_y, front_x, front_y);
+                        if (dist_ahead < max_dist_to_car_ahead)
+                            max_dist_to_car_ahead = dist_ahead;
+                    }
+                }
+                std::cout << "dist ahead = " <<  max_dist_to_car_ahead << "\n";
+
+                // find the distance to the closest car in front
+
+                // figure out if lane change is feasible
+
+                // decide the action to be taken
+                // keep lane, change lane left, change lane right
+                
+                
+                // define the path point in (s, d)
                 double new_s = car_s + (i + 1) * dist_inc; 
-                double new_d = 6;
+                double new_d = 6; // lane width is 4 m
+
+                // convert (s, d) back to (x, y)
                 vector<double> xy = getXY(new_s, new_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
 
+                // push projected path coordinates to the simulator
                 next_x_vals.push_back(xy[0]);
                 next_y_vals.push_back(xy[1]);
 
@@ -257,6 +335,11 @@ int main() {
 
           	msgJson["next_x"] = next_x_vals;
           	msgJson["next_y"] = next_y_vals;
+
+            // print the last point of the projected path
+            std::cout << "last points in projected path: ";
+            std::cout << next_x_vals[next_x_vals.size()-1] << ", ";
+            std::cout << next_y_vals[next_y_vals.size()-1] << "\n";
 
           	auto msg = "42[\"control\","+ msgJson.dump()+"]";
 
