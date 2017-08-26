@@ -291,7 +291,7 @@ int main() {
                 {
                     double front_x = other_car[1];
                     double front_y = other_car[2];
-                    double dist_ahead = distance(car_x, car_y, front_x, front_y);
+                    double dist_ahead = (double) other_car[5] - car_s;
                     if (dist_ahead < max_dist_to_car_ahead)
                     {
                         max_dist_to_car_ahead = dist_ahead;
