@@ -10,6 +10,10 @@
 #include "json.hpp"
 #include <assert.h>
 #include <typeinfo>
+#include <map>
+#include <string>
+
+#define bignum 100000.0
 
 using namespace std;
 
@@ -53,6 +57,79 @@ int find_lane_number(double car_lane)
         return (1);
 }
 
+std::map<std::string, vector<double>> get_nearby_car_info(int my_lane, double car_s, vector<vector<double>> sensor_fusion)
+{
+    // find position, velocity and distance to the cars in neighboring lanes
+
+    std::map<std::string, vector<double>> nearby_cars;
+    std::map<std::string, double> max_dist_to_car;
+
+    max_dist_to_car["left_front"] = bignum;
+    max_dist_to_car["left_behind"] = bignum;
+    max_dist_to_car["right_front"] = bignum;
+    max_dist_to_car["right_behind"] = bignum;
+    max_dist_to_car["same_front"] = bignum;
+
+    nearby_cars["left_front"] = {-1, -1, bignum};
+    nearby_cars["left_behind"] = {-1, -1, bignum};
+    nearby_cars["right_front"] = {-1, -1, bignum};
+    nearby_cars["right_behind"] = {-1, -1, bignum};
+    nearby_cars["same_front"] = {-1, -1, bignum};
+
+    for (int i=0; i<sensor_fusion.size(); i++)
+    {
+        vector<double> other_car = sensor_fusion[i];
+        // sensor fusion array: id, x, y, vx, vy, s, d
+        int lane_num = find_lane_number(other_car[6]);
+        double ox = other_car[1];
+        double oy = other_car[2];
+        double ovx = other_car[3];
+        double ovy = other_car[4];
+        double ov = sqrt(ovx*ovx + ovy*ovy);
+        double os = other_car[5];
+        double dist_ahead = os - car_s;
+        double dist_behind = car_s - os;
+
+        if (lane_num - my_lane == 1)  // car in right lane
+        {
+            if ((os > car_s) && (dist_ahead < max_dist_to_car["right_front"]))
+            {
+                max_dist_to_car["right_front"] = dist_ahead;
+                nearby_cars["right_front"] = {os, ov, dist_ahead};
+            }
+            if ((os < car_s) && (dist_behind < max_dist_to_car["right_behind"]))
+            {
+                max_dist_to_car["right_behind"] = dist_behind;
+                nearby_cars["right_behind"] = {os, ov, dist_behind};
+            }
+        }
+        else if (my_lane - lane_num == 1)  // car in left lane
+        {
+            if ((os > car_s) && (dist_ahead < max_dist_to_car["left_front"]))
+            {
+                max_dist_to_car["left_front"] = dist_ahead;
+                nearby_cars["left_front"] = {os, ov, dist_ahead};
+            }
+            if ((os < car_s) && (dist_behind < max_dist_to_car["left_behind"]))
+            {
+                max_dist_to_car["left_behind"] = dist_behind;
+                nearby_cars["left_behind"] = {os, ov, dist_behind};
+            }
+        }
+        else if (my_lane == lane_num)  // car in same lane
+        {
+            if ((os > car_s) && (dist_ahead < max_dist_to_car["same_front"]))
+            {
+                max_dist_to_car["same_front"] = dist_ahead;
+                nearby_cars["same_front"] = {os, ov, dist_ahead};
+            }
+        }
+
+    }
+
+    return (nearby_cars);
+}
+
 vector<double> get_car_in_front(int my_lane, double car_s, vector<vector<double>> sensor_fusion)
 {
     // find position, velocity and distance to the car in front
@@ -70,7 +147,6 @@ vector<double> get_car_in_front(int my_lane, double car_s, vector<vector<double>
         {
             double front_x = other_car[1];
             double front_y = other_car[2];
-            //double dist_ahead = (double) other_car[5] - car_s;
             double dist_ahead = other_car[5] - car_s;
             if (dist_ahead < max_dist_to_car_ahead)
             {
@@ -315,15 +391,24 @@ int main() {
             int my_lane = find_lane_number(car_d);
             vector<double> car_in_front = get_car_in_front(my_lane, car_s, sensor_fusion);
 
+            std::map<std::string, vector<double>> nearby_cars = get_nearby_car_info(my_lane, car_s, sensor_fusion);
+
+            // find closest cars in neighboring lanes
+            //vector<double> cars_in_next_lane = get_nearby_car_info(my_lane, car_s, sensor_fusion);
+
             // alert when collision with car in front in imminent
             double time_to_collision = 0.5; // seconds
             double keep_distance = 5.0; // meters
-            //if (car_in_front_id > -1)
-            if (car_in_front[1] > 0)
+            //if (car_in_front[1] > 0)
+            if (nearby_cars["same_front"][2] < bignum)
             {
-                double car_in_front_s = car_in_front[0];
-                double car_in_front_v = car_in_front[1];
-                double max_dist_to_car_ahead = car_in_front[2];
+                //double car_in_front_s = car_in_front[0];
+                //double car_in_front_v = car_in_front[1];
+                //double max_dist_to_car_ahead = car_in_front[2];
+                double car_in_front_s = nearby_cars["same_front"][0];
+                double car_in_front_v = nearby_cars["same_front"][1];
+                double max_dist_to_car_ahead = nearby_cars["same_front"][2];
+
                 std::cout << " car in front (s, v) = " << car_in_front_s << ", " << car_in_front_v << " , my (s, v) = " << car_s << ", " << car_speed << "\n";
                 double dis = car_in_front_s - car_s + (car_in_front_v - car_speed) * time_to_collision;
                 std::cout << "dist now = " <<  max_dist_to_car_ahead << " dist proj " << dis << "\n";
