@@ -53,6 +53,41 @@ int find_lane_number(double car_lane)
         return (1);
 }
 
+vector<double> get_car_in_front(int my_lane, double car_s, vector<vector<double>> sensor_fusion)
+{
+    // find position, velocity and distance to the car in front
+
+    double max_dist_to_car_ahead = 10000;
+    int car_in_front_id = -1;
+    double car_in_front_v = -100;
+    double car_in_front_s = -100;
+    for (int i=0; i<sensor_fusion.size(); i++)
+    {
+        vector<double> other_car = sensor_fusion[i];
+        // sensor fusion array: id, x, y, vx, vy, s, d
+        int lane_num = find_lane_number(other_car[6]);
+        if ((lane_num == my_lane) && ((double) other_car[5] > car_s))
+        {
+            double front_x = other_car[1];
+            double front_y = other_car[2];
+            //double dist_ahead = (double) other_car[5] - car_s;
+            double dist_ahead = other_car[5] - car_s;
+            if (dist_ahead < max_dist_to_car_ahead)
+            {
+                max_dist_to_car_ahead = dist_ahead;
+                car_in_front_id = other_car[0];
+                double vx = other_car[3];
+                double vy = other_car[4];
+                car_in_front_v = sqrt(vx*vx + vy*vy);
+                car_in_front_s = other_car[5];
+            }
+        }
+    }
+
+    vector<double> info = {car_in_front_s, car_in_front_v, max_dist_to_car_ahead};
+    return (info);
+}
+
 int ClosestWaypoint(double x, double y, vector<double> maps_x, vector<double> maps_y)
 {
 
@@ -278,37 +313,17 @@ int main() {
 
             // find the closest car in front of my car
             int my_lane = find_lane_number(car_d);
-            double max_dist_to_car_ahead = 10000;
-            int car_in_front_id = -1;
-            double car_in_front_v = -100;
-            double car_in_front_s = -100;
-            for (int i=0; i<sensor_fusion.size(); i++)
-            {
-                auto other_car = sensor_fusion[i];
-                // sensor fusion array: id, x, y, vx, vy, s, d
-                int lane_num = find_lane_number(other_car[6]);
-                if ((lane_num == my_lane) && ((double) other_car[5] > car_s))
-                {
-                    double front_x = other_car[1];
-                    double front_y = other_car[2];
-                    double dist_ahead = (double) other_car[5] - car_s;
-                    if (dist_ahead < max_dist_to_car_ahead)
-                    {
-                        max_dist_to_car_ahead = dist_ahead;
-                        car_in_front_id = other_car[0];
-                        double vx = other_car[3];
-                        double vy = other_car[4];
-                        car_in_front_v = sqrt(vx*vx + vy*vy);
-                        car_in_front_s = other_car[5];
-                    }
-                }
-            }
+            vector<double> car_in_front = get_car_in_front(my_lane, car_s, sensor_fusion);
 
             // alert when collision with car in front in imminent
             double time_to_collision = 0.5; // seconds
             double keep_distance = 5.0; // meters
-            if (car_in_front_id > -1)
+            //if (car_in_front_id > -1)
+            if (car_in_front[1] > 0)
             {
+                double car_in_front_s = car_in_front[0];
+                double car_in_front_v = car_in_front[1];
+                double max_dist_to_car_ahead = car_in_front[2];
                 std::cout << " car in front (s, v) = " << car_in_front_s << ", " << car_in_front_v << " , my (s, v) = " << car_s << ", " << car_speed << "\n";
                 double dis = car_in_front_s - car_s + (car_in_front_v - car_speed) * time_to_collision;
                 std::cout << "dist now = " <<  max_dist_to_car_ahead << " dist proj " << dis << "\n";
