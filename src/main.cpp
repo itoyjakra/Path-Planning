@@ -12,6 +12,7 @@
 #include <typeinfo>
 #include <map>
 #include <string>
+#include "spline.h"
 
 #define bignum 100000.0
 
@@ -300,6 +301,11 @@ int main() {
   // The max s value before wrapping around the track back to 0
   double max_s = 6945.554;
 
+  // speed limit 
+  double max_speed = 21.0; // in m/s, somewhat less that 50 mph
+  double target_speed = 5.0; // starting speed
+  double target_lane = 1; // middle lane
+
   ifstream in_map_(map_file_.c_str(), ifstream::in);
 
   string line;
@@ -322,7 +328,7 @@ int main() {
   	map_waypoints_dy.push_back(d_y);
   }
 
-  h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+  h.onMessage([&target_lane,&target_speed,&max_speed,&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -416,43 +422,118 @@ int main() {
                     std::cout << "!!!!!!!!!!!!!!!!!!!!!!!collision within 5 seconds, dis = " << dis << " \n";
             }
 
+            // create a spline from a set of points
+            vector<double> s_spline;
+            vector<double> d_spline;
+            vector<double> anchor_pts_x, anchor_pts_y; // points to create the spline
 
-            for(int i = 0; i < 50; i++) // 50 points -> 1 s
+            // start with a couple of points from the previous path
+            int prev_path_size = previous_path_x.size();
+            double last_x, last_y, second_last_x, second_last_y, heading_angle;
+            if (prev_path_size > 1) // path history available
             {
-                // increase speed gradually
-                /*
-                double t = (i + 1) * delta_t;
-                double speed = speed_limit * (1 - exp(-alpha * t));
-                if (speed > speed_limit) 
-                    speed = speed_limit;
-
-                dist_inc =  speed * t;
-                double new_s = car_s + dist_inc;
-                std::cout << "i = " << i << ", " << "t = " << t << ", " << "v = " << speed << std::endl;
-                */
-
-                // find the distance to the closest car in front
-
-                // figure out if lane change is feasible
-
-                // decide the action to be taken
-                // keep lane, change lane left, change lane right
-                
-                
-                // define the path point in (s, d)
-                double new_s = car_s + (i + 1) * dist_inc; 
-                double new_d = 6; // lane width is 4 m
-
-                // convert (s, d) back to (x, y)
-                vector<double> xy = getXY(new_s, new_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
-
-                // push projected path coordinates to the simulator
-                next_x_vals.push_back(xy[0]);
-                next_y_vals.push_back(xy[1]);
-
-                //next_x_vals.push_back(car_x+(dist_inc*i)*cos(deg2rad(car_yaw)));
-                //next_y_vals.push_back(car_y+(dist_inc*i)*sin(deg2rad(car_yaw)));
+                last_x = previous_path_x[prev_path_size-1];
+                last_y = previous_path_y[prev_path_size-1];
+                second_last_x = previous_path_x[prev_path_size-2];
+                second_last_y = previous_path_y[prev_path_size-2];
+                heading_angle = atan2(last_y - second_last_y, last_x - second_last_x);
             }
+            else // just starting, use the current position
+            {
+                last_x = car_x;
+                last_y = car_y;
+                heading_angle = car_yaw,
+                second_last_x = car_x - 5;
+                second_last_y = car_y + 5 * tan(heading_angle);
+            }
+
+            // add the first two points in the anchor points list
+            anchor_pts_x.push_back(second_last_x);
+            anchor_pts_x.push_back(last_x);
+            anchor_pts_y.push_back(second_last_y);
+            anchor_pts_y.push_back(last_y);
+
+            // add a few equally separated points ahead
+            double ds = 30.0;
+            for (int i=0; i<3; i++)
+            {
+                double temp_s = car_s + (i + 1) * ds;
+                double temp_d = target_lane * 4 + 2;
+                vector<double> xy = getXY(temp_s, temp_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
+                anchor_pts_x.push_back(xy[0]);
+                anchor_pts_y.push_back(xy[1]);
+            }
+            std::cout << "number of anchor points = " << anchor_pts_x.size() << std::endl;
+            std::cout << "anchor points before coord trans \n";
+            for (int i=0; i<anchor_pts_x.size(); i++)
+                std::cout << "(x, y) = " << anchor_pts_x[i] << ", " << anchor_pts_y[i] << std::endl;
+            std::cout << "last point: " << last_x << ", " << last_y << std::endl;
+            std::cout << "heading angle = " << heading_angle << std::endl;
+
+            // change the points to the car's coordinate system
+            for (int i=0; i<anchor_pts_x.size(); i++)
+            {
+                //shift origin
+                double shift_x = anchor_pts_x[i] - last_x;
+                double shift_y = anchor_pts_y[i] - last_y;
+                // rotate
+                anchor_pts_x[i] = (shift_x * cos(0 - heading_angle) - shift_y * sin(0 - heading_angle));
+                anchor_pts_y[i] = (shift_x * sin(0 - heading_angle) + shift_y * cos(0 - heading_angle));
+            }
+
+            // create the spline
+            tk::spline s;
+            std::cout << "trying to create spline from points \n";
+            for (int i=0; i<anchor_pts_x.size(); i++)
+                std::cout << "(x, y) = " << anchor_pts_x[i] << ", " << anchor_pts_y[i] << std::endl;
+            s.set_points(anchor_pts_x, anchor_pts_y);
+            std::cout << "created spline\n";
+
+            // create the additional path that we want to append to the existing path
+            double target_x = 30.0;
+            double target_y = s(target_x);
+            double target_d = sqrt(target_x*target_x + target_y*target_y);
+
+            // include all the unused previous points
+            for (int i=0; i<prev_path_size; i++)
+            {
+                next_x_vals.push_back(previous_path_x[i]);
+                next_y_vals.push_back(previous_path_y[i]);
+            }
+
+            // include the new points
+            int n_rem_pts = 50 - prev_path_size;
+            double inc_x = 0.0;
+            for (int i=0; i<n_rem_pts; i++)
+            {
+                double n_points = target_d / target_speed / delta_t;
+                double new_x = inc_x + target_x / n_points;
+                double new_y = s(new_x);
+
+                inc_x += target_x / n_points;
+
+                // shift back to global coordinate system
+                double store_x = new_x;
+                double store_y = new_y;
+
+                new_x = store_x * cos(heading_angle) - store_y * sin(heading_angle);
+                new_y = store_x * sin(heading_angle) + store_y * cos(heading_angle);
+
+                new_x += last_x;
+                new_y += last_y;
+
+                // push the new point to the path array
+                next_x_vals.push_back(new_x);
+                next_y_vals.push_back(new_y);
+
+                // check speed and change it gradually if required
+                if (target_speed > 0.95 * max_speed)
+                    target_speed -= 0.224;
+                else if (target_speed < max_speed)
+                    target_speed += 0.224;
+                std::cout << "speed = " << target_speed << std::endl;
+            }
+
 
           	msgJson["next_x"] = next_x_vals;
           	msgJson["next_y"] = next_y_vals;
