@@ -131,6 +131,20 @@ std::map<std::string, vector<double>> get_nearby_car_info(int my_lane, double ca
     return (nearby_cars);
 }
 
+double locate_car(double s, double speed, int lane, std::string lane_pos, double time_to_collision, std::map<std::string, vector<double>> nearby_cars)
+{
+    double car_in_front_s = nearby_cars[lane_pos][0];
+    double car_in_front_v = nearby_cars[lane_pos][1];
+    double max_dist_to_car_ahead = nearby_cars[lane_pos][2];
+    double dist = car_in_front_s - s + (car_in_front_v - speed) * time_to_collision;
+
+    // distance may be negative at the beginning
+    double max_s = 6945.554;
+    if (dist < 0) dist += max_s;
+
+    return (dist);
+}
+
 vector<double> get_car_in_front(int my_lane, double car_s, vector<vector<double>> sensor_fusion)
 {
     // find position, velocity and distance to the car in front
@@ -391,12 +405,13 @@ int main() {
             //vector<double> cars_in_next_lane = get_nearby_car_info(my_lane, car_s, sensor_fusion);
 
             // alert when collision with car in front in imminent
-            double time_to_collision = 0.5; // seconds
-            double keep_distance = 10.0; // meters
+            //double time_to_collision = 0.5; // seconds
+            //double keep_distance = 5.0; // meters
             //if (car_in_front[1] > 0)
-            int collision_ahead = 0;
-            int collision_left = 0;
-            int collision_right = 0;
+            //int collision_ahead = 0;
+            //int collision_left = 0;
+            //int collision_right = 0;
+            /*
             if (nearby_cars["same_front"][2] < bignum)
             {
                 double car_in_front_s = nearby_cars["same_front"][0];
@@ -412,8 +427,32 @@ int main() {
                     collision_ahead = 1;
                 }
             }
+            */
 
+            // calculate collision possibility 
+            
+            double time_to_collision = 1; // seconds
+            double keep_distance = time_to_collision * target_speed; //10.0; // meters
+            int collision_ahead = 0;
+            int collision_left = 0;
+            int collision_right = 0;
+
+            double dist_same_front = locate_car(car_s, target_speed, target_lane, "same_front", time_to_collision, nearby_cars);
+            double dist_left_front = locate_car(car_s, target_speed, target_lane, "left_front", time_to_collision, nearby_cars);
+            double dist_right_front = locate_car(car_s, target_speed, target_lane, "right_front", time_to_collision, nearby_cars);
+            double dist_left_behind = locate_car(car_s, target_speed, target_lane, "left_behind", time_to_collision, nearby_cars);
+            double dist_right_behind = locate_car(car_s, target_speed, target_lane, "right_behind", time_to_collision, nearby_cars);
+
+            if (dist_same_front < keep_distance) collision_ahead = 1;
+            if ((dist_left_front < keep_distance) && (dist_left_behind < keep_distance)) collision_left = 1;
+            if ((dist_right_front < keep_distance) && (dist_right_behind < keep_distance)) collision_right = 1;
+
+            std::cout << "distances (keep, sf, lf, rf, lb, rb) \n";
+            std::cout << keep_distance << " " << dist_same_front << " " << dist_left_front << " " << dist_right_front << " " << dist_left_behind << " " << dist_right_behind << std::endl;
+            std::cout << "collisions (f, l, r) \n";
+            std::cout << collision_ahead << " " << collision_left << " " << collision_right << std::endl;
             // check if lane change is possible
+            /*
             if (collision_ahead == 1)
             {
                 if (target_lane > 0) // check left lane
@@ -422,6 +461,8 @@ int main() {
                     double car_in_front_v = nearby_cars["left_front"][1];
                     double max_dist_to_car_ahead = nearby_cars["left_front"][2];
                     double dis = car_in_front_s - car_s + (car_in_front_v - car_speed) * time_to_collision;
+                    std::cout << "test results: " << dist_left_front << " -- " << dis << std::endl;
+                    assert (1==2);
                     if (dis < keep_distance)
                         collision_left = 1;
                 }
@@ -431,11 +472,14 @@ int main() {
                     double car_in_front_v = nearby_cars["right_front"][1];
                     double max_dist_to_car_ahead = nearby_cars["right_front"][2];
                     double dis = car_in_front_s - car_s + (car_in_front_v - car_speed) * time_to_collision;
+                    std::cout << "test results: " << dist_right_front << " -- " << dis << std::endl;
+                    assert (1==2);
                     if (dis < keep_distance)
                         collision_right = 1;
                 }
 
             }
+            */
 
             // create a spline from a set of points
             vector<double> s_spline;
@@ -483,18 +527,20 @@ int main() {
                     std::cout << "move right \n";
                     target_lane += 1;
                 }
-                else
+                else if (target_speed > 0.224)
                 {
                     std::cout << "reduce speed \n";
                     slow_down = 1;
                 }
             }
-            //target_lane = 0;
+
+            std::cout << "target lane = " << target_lane << std::endl;
             double ds = 30.0;
             for (int i=0; i<3; i++)
             {
                 double temp_s = car_s + (i + 1) * ds;
                 double temp_d = target_lane * 4 + 2;
+                std::cout << "d = " << temp_d << std::endl;
                 vector<double> xy = getXY(temp_s, temp_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
                 anchor_pts_x.push_back(xy[0]);
                 anchor_pts_y.push_back(xy[1]);
