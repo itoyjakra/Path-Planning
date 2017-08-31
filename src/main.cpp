@@ -400,6 +400,7 @@ int main() {
 
           	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
             //
+            std::cout << "---------------------------- target lane = " << target_lane << "  ----------------------------\n";
             std::cout << "size of previous path = " << previous_path_x.size() << std::endl;
             // find other cars in the target lane
 
@@ -421,7 +422,7 @@ int main() {
             for (int n=0; n<3; n++)
                 if (abs((n+0.5) * width - car_d) * 100 /  width < tol_pct)
                     my_lane = n;
-            my_lane = find_lane_number(car_d);
+            target_lane = find_lane_number(car_d);
             //-----------
 
 
@@ -431,33 +432,6 @@ int main() {
 
             std::map<std::string, vector<double>> nearby_cars = get_nearby_car_info(my_lane, car_s, sensor_fusion);
 
-            // find closest cars in neighboring lanes
-            //vector<double> cars_in_next_lane = get_nearby_car_info(my_lane, car_s, sensor_fusion);
-
-            // alert when collision with car in front in imminent
-            //double time_to_collision = 0.5; // seconds
-            //double keep_distance = 5.0; // meters
-            //if (car_in_front[1] > 0)
-            //int collision_ahead = 0;
-            //int collision_left = 0;
-            //int collision_right = 0;
-            /*
-            if (nearby_cars["same_front"][2] < bignum)
-            {
-                double car_in_front_s = nearby_cars["same_front"][0];
-                double car_in_front_v = nearby_cars["same_front"][1];
-                double max_dist_to_car_ahead = nearby_cars["same_front"][2];
-
-                std::cout << " car in front (s, v) = " << car_in_front_s << ", " << car_in_front_v << " , my (s, v) = " << car_s << ", " << car_speed << "\n";
-                double dis = car_in_front_s - car_s + (car_in_front_v - car_speed) * time_to_collision;
-                std::cout << "dist now = " <<  max_dist_to_car_ahead << " dist proj " << dis << "\n";
-                if (dis < keep_distance)
-                {
-                    std::cout << "!!!!!!!!!!!!!!!!!!!!!!!collision within 5 seconds, dis = " << dis << " \n";
-                    collision_ahead = 1;
-                }
-            }
-            */
 
             // calculate collision possibility 
             
@@ -515,18 +489,22 @@ int main() {
 
             // add a few equally separated points ahead
             int slow_down = 0;
+            int change_lane;
+            int move_to_lane = target_lane;
             if (collision_ahead == 1)
             {
                 std::cout << "c_left, c_right, target_lane: " << collision_left << ", " << collision_right << ", " << target_lane << std::endl;
                 if ((collision_left == 0) && (target_lane > 0))
                 {
                     std::cout << "move left \n";
-                    target_lane -= 1;
+                    move_to_lane -= 1;
+                    change_lane = 1;
                 }
                 else if ((collision_right == 0) && (target_lane < 2))
                 {
                     std::cout << "move right \n";
-                    target_lane += 1;
+                    move_to_lane += 1;
+                    change_lane = 1;
                 }
                 else if (target_speed > 0.224)
                 {
@@ -535,12 +513,12 @@ int main() {
                 }
             }
 
-            std::cout << "target lane = " << target_lane << std::endl;
+            std::cout << "move_to lane = " << move_to_lane << std::endl;
             double ds = 30.0;
             for (int i=0; i<3; i++)
             {
                 double temp_s = car_s + (i + 1) * ds;
-                double temp_d = target_lane * 4 + 2;
+                double temp_d = move_to_lane * 4 + 2;
                 std::cout << "d = " << temp_d << std::endl;
                 vector<double> xy = getXY(temp_s, temp_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
                 anchor_pts_x.push_back(xy[0]);
@@ -587,7 +565,7 @@ int main() {
             }
 
             // include the new points
-            int n_rem_pts = 50 - prev_path_size;
+            int n_rem_pts = 50 - prev_path_size; // + 25 * change_lane;
             double inc_x = 0.0;
             for (int i=0; i<n_rem_pts; i++)
             {
@@ -613,9 +591,9 @@ int main() {
 
                 // check speed and change it gradually if required
                 if ((target_speed > 0.95 * max_speed) || (slow_down == 1))
-                    target_speed -= 0.224;
+                    target_speed -= 0.16; //0.224;
                 else if (target_speed < max_speed)
-                    target_speed += 0.224;
+                    target_speed += 0.16; //0.224;
                 std::cout << "speed = " << target_speed << std::endl;
             }
 
