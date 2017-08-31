@@ -303,7 +303,7 @@ int main() {
 
   // speed limit 
   double max_speed = 21.0; // in m/s, somewhat less that 50 mph
-  double target_speed = 5.0; // starting speed
+  double target_speed = 1.0; // starting speed
   double target_lane = 1; // middle lane
 
   ifstream in_map_(map_file_.c_str(), ifstream::in);
@@ -381,21 +381,9 @@ int main() {
             speed_limit *= (1.6e3 / 3600); // m/s
             double alpha = 10.0;
 
-            // test previous path
-            if (previous_path_x.size() > 10)
-            {
-                //for (int i=0; i<previous_path_x.size(); i++)
-                    //std::cout << previous_path_x[i] << ", " << previous_path_y[i] << std::endl;
-                std::cout << "--------------\n";
-                int i = previous_path_x.size() - 1;
-                std::cout << "(x, y) = " << previous_path_x[i] << ", " << previous_path_y[i] << std::endl;
-                std::cout << "(s, d) = " << end_path_s << ", " << end_path_d << std::endl;
-                //assert (1==2);
-            }
-
             // find the closest car in front of my car
             int my_lane = find_lane_number(car_d);
-            vector<double> car_in_front = get_car_in_front(my_lane, car_s, sensor_fusion);
+            //vector<double> car_in_front = get_car_in_front(my_lane, car_s, sensor_fusion);
 
             std::map<std::string, vector<double>> nearby_cars = get_nearby_car_info(my_lane, car_s, sensor_fusion);
 
@@ -404,13 +392,13 @@ int main() {
 
             // alert when collision with car in front in imminent
             double time_to_collision = 0.5; // seconds
-            double keep_distance = 5.0; // meters
+            double keep_distance = 10.0; // meters
             //if (car_in_front[1] > 0)
+            int collision_ahead = 0;
+            int collision_left = 0;
+            int collision_right = 0;
             if (nearby_cars["same_front"][2] < bignum)
             {
-                //double car_in_front_s = car_in_front[0];
-                //double car_in_front_v = car_in_front[1];
-                //double max_dist_to_car_ahead = car_in_front[2];
                 double car_in_front_s = nearby_cars["same_front"][0];
                 double car_in_front_v = nearby_cars["same_front"][1];
                 double max_dist_to_car_ahead = nearby_cars["same_front"][2];
@@ -419,7 +407,34 @@ int main() {
                 double dis = car_in_front_s - car_s + (car_in_front_v - car_speed) * time_to_collision;
                 std::cout << "dist now = " <<  max_dist_to_car_ahead << " dist proj " << dis << "\n";
                 if (dis < keep_distance)
+                {
                     std::cout << "!!!!!!!!!!!!!!!!!!!!!!!collision within 5 seconds, dis = " << dis << " \n";
+                    collision_ahead = 1;
+                }
+            }
+
+            // check if lane change is possible
+            if (collision_ahead == 1)
+            {
+                if (target_lane > 0) // check left lane
+                {
+                    double car_in_front_s = nearby_cars["left_front"][0];
+                    double car_in_front_v = nearby_cars["left_front"][1];
+                    double max_dist_to_car_ahead = nearby_cars["left_front"][2];
+                    double dis = car_in_front_s - car_s + (car_in_front_v - car_speed) * time_to_collision;
+                    if (dis < keep_distance)
+                        collision_left = 1;
+                }
+                if (target_lane < 2) // check right lane
+                {
+                    double car_in_front_s = nearby_cars["right_front"][0];
+                    double car_in_front_v = nearby_cars["right_front"][1];
+                    double max_dist_to_car_ahead = nearby_cars["right_front"][2];
+                    double dis = car_in_front_s - car_s + (car_in_front_v - car_speed) * time_to_collision;
+                    if (dis < keep_distance)
+                        collision_right = 1;
+                }
+
             }
 
             // create a spline from a set of points
@@ -454,6 +469,27 @@ int main() {
             anchor_pts_y.push_back(last_y);
 
             // add a few equally separated points ahead
+            int slow_down = 0;
+            if (collision_ahead == 1)
+            {
+                std::cout << "c_left, c_right, target_lane: " << collision_left << ", " << collision_right << ", " << target_lane << std::endl;
+                if ((collision_left == 0) && (target_lane > 0))
+                {
+                    std::cout << "move left \n";
+                    target_lane -= 1;
+                }
+                else if ((collision_right == 0) && (target_lane < 2))
+                {
+                    std::cout << "move right \n";
+                    target_lane += 1;
+                }
+                else
+                {
+                    std::cout << "reduce speed \n";
+                    slow_down = 1;
+                }
+            }
+            //target_lane = 0;
             double ds = 30.0;
             for (int i=0; i<3; i++)
             {
@@ -463,12 +499,14 @@ int main() {
                 anchor_pts_x.push_back(xy[0]);
                 anchor_pts_y.push_back(xy[1]);
             }
+            /*
             std::cout << "number of anchor points = " << anchor_pts_x.size() << std::endl;
             std::cout << "anchor points before coord trans \n";
             for (int i=0; i<anchor_pts_x.size(); i++)
                 std::cout << "(x, y) = " << anchor_pts_x[i] << ", " << anchor_pts_y[i] << std::endl;
             std::cout << "last point: " << last_x << ", " << last_y << std::endl;
             std::cout << "heading angle = " << heading_angle << std::endl;
+            */
 
             // change the points to the car's coordinate system
             for (int i=0; i<anchor_pts_x.size(); i++)
@@ -483,11 +521,11 @@ int main() {
 
             // create the spline
             tk::spline s;
-            std::cout << "trying to create spline from points \n";
-            for (int i=0; i<anchor_pts_x.size(); i++)
-                std::cout << "(x, y) = " << anchor_pts_x[i] << ", " << anchor_pts_y[i] << std::endl;
+            //std::cout << "trying to create spline from points \n";
+            //for (int i=0; i<anchor_pts_x.size(); i++)
+            //    std::cout << "(x, y) = " << anchor_pts_x[i] << ", " << anchor_pts_y[i] << std::endl;
             s.set_points(anchor_pts_x, anchor_pts_y);
-            std::cout << "created spline\n";
+            //std::cout << "created spline\n";
 
             // create the additional path that we want to append to the existing path
             double target_x = 30.0;
@@ -527,7 +565,7 @@ int main() {
                 next_y_vals.push_back(new_y);
 
                 // check speed and change it gradually if required
-                if (target_speed > 0.95 * max_speed)
+                if ((target_speed > 0.95 * max_speed) || (slow_down == 1))
                     target_speed -= 0.224;
                 else if (target_speed < max_speed)
                     target_speed += 0.224;
