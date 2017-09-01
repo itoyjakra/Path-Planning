@@ -332,7 +332,7 @@ int main() {
   // speed limit 
   double max_speed = 21.0; // in m/s, somewhat less that 50 mph
   double target_speed = 1.0; // starting speed
-  double target_lane = 1; // middle lane
+  double my_lane = 1; // middle lane
 
   ifstream in_map_(map_file_.c_str(), ifstream::in);
 
@@ -356,7 +356,7 @@ int main() {
   	map_waypoints_dy.push_back(d_y);
   }
 
-  h.onMessage([&target_lane,&target_speed,&max_speed,&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+  h.onMessage([&my_lane,&target_speed,&max_speed,&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -400,7 +400,7 @@ int main() {
 
           	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
             //
-            std::cout << "---------------------------- target lane = " << target_lane << "  ----------------------------\n";
+            std::cout << "---------------------------- target lane = " << my_lane << "  ----------------------------\n";
             std::cout << "size of previous path = " << previous_path_x.size() << std::endl;
 
             // define some useful parameters
@@ -411,7 +411,7 @@ int main() {
             double alpha = 10.0;
 
             // find cars in the vicinity
-            int my_lane = find_lane_number(car_d);
+            my_lane = find_lane_number(car_d);
             std::cout << "car_d = " << car_d << " , my lane = " << my_lane << std::endl;
             std::map<std::string, vector<double>> nearby_cars = get_nearby_car_info(my_lane, car_s, sensor_fusion);
 
@@ -424,11 +424,11 @@ int main() {
             int collision_left = 0;
             int collision_right = 0;
 
-            double dist_same_front = locate_car(car_s, target_speed, target_lane, "same_front", time_to_collision, nearby_cars);
-            double dist_left_front = locate_car(car_s, target_speed, target_lane, "left_front", time_to_collision, nearby_cars);
-            double dist_right_front = locate_car(car_s, target_speed, target_lane, "right_front", time_to_collision, nearby_cars);
-            double dist_left_behind = locate_car(car_s, target_speed, target_lane, "left_behind", time_to_collision, nearby_cars);
-            double dist_right_behind = locate_car(car_s, target_speed, target_lane, "right_behind", time_to_collision, nearby_cars);
+            double dist_same_front = locate_car(car_s, target_speed, my_lane, "same_front", time_to_collision, nearby_cars);
+            double dist_left_front = locate_car(car_s, target_speed, my_lane, "left_front", time_to_collision, nearby_cars);
+            double dist_right_front = locate_car(car_s, target_speed, my_lane, "right_front", time_to_collision, nearby_cars);
+            double dist_left_behind = locate_car(car_s, target_speed, my_lane, "left_behind", time_to_collision, nearby_cars);
+            double dist_right_behind = locate_car(car_s, target_speed, my_lane, "right_behind", time_to_collision, nearby_cars);
 
             if (dist_same_front < keep_distance) collision_ahead = 1;
             if ((dist_left_front < keep_distance) || (dist_left_behind < keep_distance)) collision_left = 1;
@@ -473,17 +473,17 @@ int main() {
             // add a few equally separated points ahead
             int slow_down = 0;
             int change_lane;
-            int move_to_lane = target_lane;
+            int move_to_lane = my_lane;
             if (collision_ahead == 1)
             {
-                std::cout << "c_left, c_right, target_lane: " << collision_left << ", " << collision_right << ", " << target_lane << std::endl;
-                if ((collision_left == 0) && (target_lane > 0))
+                std::cout << "c_left, c_right, my_lane: " << collision_left << ", " << collision_right << ", " << my_lane << std::endl;
+                if ((collision_left == 0) && (my_lane > 0))
                 {
                     std::cout << "move left \n";
                     move_to_lane -= 1;
                     change_lane = 1;
                 }
-                else if ((collision_right == 0) && (target_lane < 2))
+                else if ((collision_right == 0) && (my_lane < 2))
                 {
                     std::cout << "move right \n";
                     move_to_lane += 1;
