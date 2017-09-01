@@ -420,9 +420,9 @@ int main() {
             
             double time_to_collision = 1; // seconds
             double keep_distance = 30; //time_to_collision * target_speed; //10.0; // meters
-            int collision_ahead = 0;
-            int collision_left = 0;
-            int collision_right = 0;
+            bool collision_ahead = false;
+            bool collision_left = false;
+            bool collision_right = false;
 
             double dist_same_front = locate_car(car_s, target_speed, my_lane, "same_front", time_to_collision, nearby_cars);
             double dist_left_front = locate_car(car_s, target_speed, my_lane, "left_front", time_to_collision, nearby_cars);
@@ -430,9 +430,9 @@ int main() {
             double dist_left_behind = locate_car(car_s, target_speed, my_lane, "left_behind", time_to_collision, nearby_cars);
             double dist_right_behind = locate_car(car_s, target_speed, my_lane, "right_behind", time_to_collision, nearby_cars);
 
-            if (dist_same_front < keep_distance) collision_ahead = 1;
-            if ((dist_left_front < keep_distance) || (dist_left_behind < keep_distance)) collision_left = 1;
-            if ((dist_right_front < keep_distance) || (dist_right_behind < keep_distance)) collision_right = 1;
+            if (dist_same_front < keep_distance) collision_ahead = true;
+            if ((dist_left_front < keep_distance) || (dist_left_behind < keep_distance)) collision_left = true;
+            if ((dist_right_front < keep_distance) || (dist_right_behind < keep_distance)) collision_right = true;
 
             std::cout << "distances (keep, sf, lf, rf, lb, rb) \n";
             std::cout << keep_distance << " " << dist_same_front << " " << dist_left_front << " " << dist_right_front << " " << dist_left_behind << " " << dist_right_behind << std::endl;
@@ -474,16 +474,16 @@ int main() {
             int slow_down = 0;
             int change_lane;
             int move_to_lane = my_lane;
-            if (collision_ahead == 1)
+            if (collision_ahead)
             {
                 std::cout << "c_left, c_right, my_lane: " << collision_left << ", " << collision_right << ", " << my_lane << std::endl;
-                if ((collision_left == 0) && (my_lane > 0))
+                if ((collision_left) && (my_lane > 0))
                 {
                     std::cout << "move left \n";
                     move_to_lane -= 1;
                     change_lane = 1;
                 }
-                else if ((collision_right == 0) && (my_lane < 2))
+                else if ((collision_right) && (my_lane < 2))
                 {
                     std::cout << "move right \n";
                     move_to_lane += 1;
@@ -497,7 +497,7 @@ int main() {
             }
 
             // if coast is clear, stay in the middle lane
-            if ((collision_ahead == 0) && (collision_left == 0) && (collision_right == 0))
+            if ((collision_ahead) && (collision_left) && (collision_right))
                 move_to_lane = 1;
 
             std::cout << "move_to lane = " << move_to_lane << std::endl;
