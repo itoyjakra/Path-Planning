@@ -496,6 +496,10 @@ int main() {
                 }
             }
 
+            // if coast is clear, stay in the middle lane
+            if ((collision_ahead == 0) && (collision_left == 0) && (collision_right == 0))
+                move_to_lane = 1;
+
             std::cout << "move_to lane = " << move_to_lane << std::endl;
             double ds = 40.0; //30.0;
             for (int i=0; i<3; i++)
