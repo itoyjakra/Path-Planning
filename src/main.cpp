@@ -402,34 +402,17 @@ int main() {
             //
             std::cout << "---------------------------- target lane = " << target_lane << "  ----------------------------\n";
             std::cout << "size of previous path = " << previous_path_x.size() << std::endl;
-            // find other cars in the target lane
 
+            // define some useful parameters
             double delta_t = 0.02; // 20 ms
             double dist_inc = 0.5; // meters
             double speed_limit = 50; // miles/hr
             speed_limit *= (1.6e3 / 3600); // m/s
             double alpha = 10.0;
 
-            // find the closest car in front of my car
-            //int new_lane = find_lane_number(car_d);
-            //int my_lane = (new_lane > 0) ? new_lane : target_lane;
-
-            //-----------
-            double width = 4.0;
-            double tol_pct = 10.0;
-            int my_lane = target_lane;
-
-            for (int n=0; n<3; n++)
-                if (abs((n+0.5) * width - car_d) * 100 /  width < tol_pct)
-                    my_lane = n;
-            target_lane = find_lane_number(car_d);
-            //-----------
-
-
+            // find cars in the vicinity
+            int my_lane = find_lane_number(car_d);
             std::cout << "car_d = " << car_d << " , my lane = " << my_lane << std::endl;
-            //if (new_lane > 0) my_lane = new_lane else my_lane = target_lane;
-            //vector<double> car_in_front = get_car_in_front(my_lane, car_s, sensor_fusion);
-
             std::map<std::string, vector<double>> nearby_cars = get_nearby_car_info(my_lane, car_s, sensor_fusion);
 
 
@@ -514,7 +497,7 @@ int main() {
             }
 
             std::cout << "move_to lane = " << move_to_lane << std::endl;
-            double ds = 30.0;
+            double ds = 40.0; //30.0;
             for (int i=0; i<3; i++)
             {
                 double temp_s = car_s + (i + 1) * ds;
@@ -524,14 +507,6 @@ int main() {
                 anchor_pts_x.push_back(xy[0]);
                 anchor_pts_y.push_back(xy[1]);
             }
-            /*
-            std::cout << "number of anchor points = " << anchor_pts_x.size() << std::endl;
-            std::cout << "anchor points before coord trans \n";
-            for (int i=0; i<anchor_pts_x.size(); i++)
-                std::cout << "(x, y) = " << anchor_pts_x[i] << ", " << anchor_pts_y[i] << std::endl;
-            std::cout << "last point: " << last_x << ", " << last_y << std::endl;
-            std::cout << "heading angle = " << heading_angle << std::endl;
-            */
 
             // change the points to the car's coordinate system
             for (int i=0; i<anchor_pts_x.size(); i++)
@@ -544,13 +519,9 @@ int main() {
                 anchor_pts_y[i] = (shift_x * sin(0 - heading_angle) + shift_y * cos(0 - heading_angle));
             }
 
-            // create the spline
+            // create the spline with anchor points
             tk::spline s;
-            //std::cout << "trying to create spline from points \n";
-            //for (int i=0; i<anchor_pts_x.size(); i++)
-            //    std::cout << "(x, y) = " << anchor_pts_x[i] << ", " << anchor_pts_y[i] << std::endl;
             s.set_points(anchor_pts_x, anchor_pts_y);
-            //std::cout << "created spline\n";
 
             // create the additional path that we want to append to the existing path
             double target_x = 30.0;
@@ -564,8 +535,8 @@ int main() {
                 next_y_vals.push_back(previous_path_y[i]);
             }
 
-            // include the new points
-            int n_rem_pts = 50 - prev_path_size; // + 25 * change_lane;
+            // include the new points to make the list size to 50
+            int n_rem_pts = 50 - prev_path_size;
             double inc_x = 0.0;
             for (int i=0; i<n_rem_pts; i++)
             {
