@@ -434,7 +434,6 @@ int main() {
             bool collision_left = false;
             bool collision_right = false;
 
-            // add logic to address that collision_left should be false for car in left most lane
             double dist_same_front = locate_car(car_s, target_speed, "same_front", time_to_collision, nearby_cars);
             double dist_left_front = locate_car(car_s, target_speed, "left_front", time_to_collision, nearby_cars);
             double dist_right_front = locate_car(car_s, target_speed, "right_front", time_to_collision, nearby_cars);
@@ -442,8 +441,8 @@ int main() {
             double dist_right_behind = locate_car(car_s, target_speed, "right_behind", time_to_collision, nearby_cars);
 
             if (dist_same_front < keep_distance_front) collision_ahead = true;
-            if ((dist_left_front < keep_distance_front) || (dist_left_behind > -keep_distance_behind)) collision_left = true;
-            if ((dist_right_front < keep_distance_front) || (dist_right_behind > -keep_distance_behind)) collision_right = true;
+            if ((dist_left_front < keep_distance_front || dist_left_behind > -keep_distance_behind) && my_lane > 0) collision_left = true;
+            if ((dist_right_front < keep_distance_front || dist_right_behind > -keep_distance_behind) && my_lane < 2) collision_right = true;
 
             std::cout << "distances (keep, lb, lf, same, rf, rb) \n";
             std::cout << keep_distance_front << " --- " << dist_left_behind << " .. " << dist_left_front << " .. " << dist_same_front << " .. " << dist_right_front << " .. " << dist_right_behind << std::endl;
