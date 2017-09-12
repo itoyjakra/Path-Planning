@@ -138,6 +138,15 @@ std::map<std::string, vector<double>> get_nearby_car_info(int my_lane, double ca
         }
 
     }
+    // print nearby car info
+    typedef std::map<std::string, vector<double>> MyMap;
+    for( MyMap::const_iterator it = nearby_cars.begin(); it != nearby_cars.end(); ++it )
+    {
+        string key = it->first;
+        vector<double> value = it->second;
+        std::cout << key << " : " << value[0] << ", " << value[2] << std::endl;
+    }
+    //
 
     return (nearby_cars);
 }
@@ -146,8 +155,9 @@ double locate_car(double s, double my_car_v, std::string other_car_lane, double 
 {
     // Calculate the future distance between my car and the nearest car
 
-    double max_s = 6945.554;
+    double max_s = 6945.554 * 2; // just a big number
     double other_car_s = nearby_cars[other_car_lane][0];
+    // handle negative s values
     if (other_car_s < 0)
         other_car_s += max_s;
 
@@ -411,7 +421,7 @@ int main() {
 
             // find cars in the vicinity
             my_lane = find_lane_number(car_d);
-            std::cout << "car_d = " << car_d << " , my lane = " << my_lane << std::endl;
+            std::cout << "car_s = " << car_s << " , car_d = " << car_d << " , my lane = " << my_lane << std::endl;
             std::map<std::string, vector<double>> nearby_cars = get_nearby_car_info(my_lane, car_s, sensor_fusion);
 
 
@@ -518,6 +528,11 @@ int main() {
                     slow_down = 1;
                 }
             }
+
+            // TODO: improve lane changing logic to avoid boxed in situation
+            // TODO: increase speed but keep lateral acceleration under control
+            // TODO: preferred lane is the one with maximum available free road ahead
+            // TODO: fix abrupt stopping issue
 
             // if coast is clear, stay in the middle lane
             if ((!collision_ahead) && (!collision_left) && (!collision_right))
