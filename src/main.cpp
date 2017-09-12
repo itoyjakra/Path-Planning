@@ -418,7 +418,8 @@ int main() {
             // calculate collision possibility 
             
             double time_to_collision = 1; // seconds
-            double keep_distance = 30; //time_to_collision * target_speed; //10.0; // meters
+            double keep_distance_front = 30; //time_to_collision * target_speed; //10.0; // meters
+            double keep_distance_behind = 10; //time_to_collision * target_speed; //10.0; // meters
             bool collision_ahead = false;
             bool collision_left = false;
             bool collision_right = false;
@@ -430,15 +431,14 @@ int main() {
             double dist_left_behind = locate_car(car_s, target_speed, "left_behind", time_to_collision, nearby_cars);
             double dist_right_behind = locate_car(car_s, target_speed, "right_behind", time_to_collision, nearby_cars);
 
-            if (dist_same_front < keep_distance) collision_ahead = true;
-            if ((dist_left_front < keep_distance) || (dist_left_behind > -keep_distance)) collision_left = true;
-            if ((dist_right_front < keep_distance) || (dist_right_behind > -keep_distance)) collision_right = true;
+            if (dist_same_front < keep_distance_front) collision_ahead = true;
+            if ((dist_left_front < keep_distance_front) || (dist_left_behind > -keep_distance_behind)) collision_left = true;
+            if ((dist_right_front < keep_distance_front) || (dist_right_behind > -keep_distance_behind)) collision_right = true;
 
-            std::cout << "distances (keep, lf, lb, same, rf, rb) \n";
-            //std::cout << keep_distance << " " << dist_same_front << " " << dist_left_front << " " << dist_right_front << " " << dist_left_behind << " " << dist_right_behind << std::endl;
-            std::cout << keep_distance << " --- " << dist_left_front << " .. " << dist_left_behind << " .. " << dist_same_front << " .. " << dist_right_front << " .. " << dist_right_behind << std::endl;
-            std::cout << "collisions (f, l, r) \n";
-            std::cout << collision_ahead << " " << collision_left << " " << collision_right << std::endl;
+            std::cout << "distances (keep, lb, lf, same, rf, rb) \n";
+            std::cout << keep_distance_front << " --- " << dist_left_behind << " .. " << dist_left_front << " .. " << dist_same_front << " .. " << dist_right_front << " .. " << dist_right_behind << std::endl;
+            std::cout << "collisions (l, f, r) \n";
+            std::cout << collision_left << " " << collision_ahead << " " << collision_right << std::endl;
 
             // create a spline from a set of points
             vector<double> s_spline;
@@ -477,16 +477,38 @@ int main() {
             int move_to_lane = my_lane;
             if (collision_ahead)
             {
-                std::cout << "c_left, c_right, my_lane: " << collision_left << ", " << collision_right << ", " << my_lane << std::endl;
+                bool move_left = false;
+                bool move_right = false;
+
                 if ((!collision_left) && (my_lane > 0))
                 {
-                    std::cout << "move left \n";
+                    std::cout << "move left possible\n";
+                    move_left = true;
+                }
+
+                if ((!collision_right) && (my_lane < 2))
+                {
+                    std::cout << "move right possible\n";
+                    move_right = true;
+                }
+
+                std::cout << "move_left, move_right: " << move_left << ", " << move_right << std::endl;
+
+                if (move_left && move_right)
+                {
+                    change_lane = 1;
+                    if (dist_left_front > dist_right_front)
+                        move_to_lane -= 1;
+                    else
+                        move_to_lane += 1;
+                }
+                else if (move_left)
+                {
                     move_to_lane -= 1;
                     change_lane = 1;
                 }
-                else if ((!collision_right) && (my_lane < 2))
+                else if (move_right)
                 {
-                    std::cout << "move right \n";
                     move_to_lane += 1;
                     change_lane = 1;
                 }
