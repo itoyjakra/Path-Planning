@@ -142,22 +142,18 @@ std::map<std::string, vector<double>> get_nearby_car_info(int my_lane, double ca
     return (nearby_cars);
 }
 
-double locate_car(double s, double speed, int lane, std::string lane_pos, double time_to_collision, std::map<std::string, vector<double>> nearby_cars)
+double locate_car(double s, double my_car_v, std::string other_car_lane, double time_to_collision, std::map<std::string, vector<double>> nearby_cars)
 {
+    // Calculate the future distance between my car and the nearest car
+
     double max_s = 6945.554;
-    double car_in_front_s = nearby_cars[lane_pos][0];
-    if (car_in_front_s < 0)
-        car_in_front_s += max_s;
+    double other_car_s = nearby_cars[other_car_lane][0];
+    if (other_car_s < 0)
+        other_car_s += max_s;
 
-    double car_in_front_v = nearby_cars[lane_pos][1];
-    double max_dist_to_car_ahead = nearby_cars[lane_pos][2];
-    double dist = car_in_front_s - s + (car_in_front_v - speed) * time_to_collision;
-
-    //if ((lane_pos == "left_behind") || (lane_pos == "right_behind"))
-        //dist *= -1;
-
-    // distance may be negative at the beginning
-    //if (dist < 0) dist += max_s;
+    double other_car_v = nearby_cars[other_car_lane][1];
+    double max_dist_to_car_ahead = nearby_cars[other_car_lane][2];
+    double dist = other_car_s - s + (other_car_v - my_car_v) * time_to_collision;
 
     return (dist);
 }
@@ -428,11 +424,11 @@ int main() {
             bool collision_right = false;
 
             // add logic to address that collision_left should be false for car in left most lane
-            double dist_same_front = locate_car(car_s, target_speed, my_lane, "same_front", time_to_collision, nearby_cars);
-            double dist_left_front = locate_car(car_s, target_speed, my_lane, "left_front", time_to_collision, nearby_cars);
-            double dist_right_front = locate_car(car_s, target_speed, my_lane, "right_front", time_to_collision, nearby_cars);
-            double dist_left_behind = locate_car(car_s, target_speed, my_lane, "left_behind", time_to_collision, nearby_cars);
-            double dist_right_behind = locate_car(car_s, target_speed, my_lane, "right_behind", time_to_collision, nearby_cars);
+            double dist_same_front = locate_car(car_s, target_speed, "same_front", time_to_collision, nearby_cars);
+            double dist_left_front = locate_car(car_s, target_speed, "left_front", time_to_collision, nearby_cars);
+            double dist_right_front = locate_car(car_s, target_speed, "right_front", time_to_collision, nearby_cars);
+            double dist_left_behind = locate_car(car_s, target_speed, "left_behind", time_to_collision, nearby_cars);
+            double dist_right_behind = locate_car(car_s, target_speed, "right_behind", time_to_collision, nearby_cars);
 
             if (dist_same_front < keep_distance) collision_ahead = true;
             if ((dist_left_front < keep_distance) || (dist_left_behind > -keep_distance)) collision_left = true;
