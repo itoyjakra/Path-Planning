@@ -349,7 +349,7 @@ int main() {
 
   //my_params_d["target_speed"] = 1.0;
   my_params_i["my_lane"] = 1;
-  my_params_d["max_speed"] = 21.0;
+  my_params_d["max_speed"] = 22.4;
   my_params_d["time_to_next_anchor"] = 2.5;
   my_params_d["min_dist_to_next_anchor"] = 40.0;
 
@@ -624,7 +624,7 @@ int main() {
                 next_y_vals.push_back(new_y);
 
                 // check speed and change it gradually if required
-                if ((target_speed > 0.95 * max_speed) || (slow_down == 1))
+                if ((target_speed > 0.99 * max_speed) || (slow_down == 1))
                     target_speed -= 0.16; //0.224;
                 else if (target_speed < max_speed)
                     target_speed += 0.16; //0.224;
