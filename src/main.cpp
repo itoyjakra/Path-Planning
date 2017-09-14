@@ -352,6 +352,7 @@ int main() {
   my_params_d["max_speed"] = 22.4;
   my_params_d["time_to_next_anchor"] = 2.5;
   my_params_d["min_dist_to_next_anchor"] = 40.0;
+  my_params_d["delta_speed"] = 0.16;
 
   ifstream in_map_(map_file_.c_str(), ifstream::in);
 
@@ -625,9 +626,9 @@ int main() {
 
                 // check speed and change it gradually if required
                 if ((target_speed > 0.99 * max_speed) || (slow_down == 1))
-                    target_speed -= 0.16; //0.224;
+                    target_speed -= my_params_d["delta_speed"];
                 else if (target_speed < max_speed)
-                    target_speed += 0.16; //0.224;
+                    target_speed += my_params_d["delta_speed"];
                 std::cout << "speed = " << target_speed << std::endl;
             }
 
