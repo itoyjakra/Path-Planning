@@ -350,6 +350,8 @@ int main() {
   //my_params_d["target_speed"] = 1.0;
   my_params_i["my_lane"] = 1;
   my_params_d["max_speed"] = 21.0;
+  my_params_d["time_to_next_anchor"] = 2.5;
+  my_params_d["min_dist_to_next_anchor"] = 40.0;
 
   ifstream in_map_(map_file_.c_str(), ifstream::in);
 
@@ -554,7 +556,10 @@ int main() {
             std::cout << "move_to lane = " << move_to_lane << std::endl;
             // now add a few equally separated points ahead
             //double ds = 40.0; // target_speed * 2; //40.0; //30.0;
-            double ds = target_speed * 2.5 < 40 ? 40 : target_speed * 2.5; //40.0; //30.0;
+            //double ds = target_speed * 2.5 < 40 ? 40 : target_speed * 2.5; //40.0; //30.0;
+            //
+            double dist_to_next_anchor = target_speed * my_params_d["time_to_next_anchor"];
+            double ds = dist_to_next_anchor < my_params_d["min_dist_to_next_anchor"] ? my_params_d["min_dist_to_next_anchor"] : dist_to_next_anchor;
             int additional_points = 3;
             for (int i=0; i<additional_points; i++)
             {
