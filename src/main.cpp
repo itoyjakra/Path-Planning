@@ -343,6 +343,14 @@ int main() {
   double target_speed = 1.0; // starting speed
   double my_lane = 1; // middle lane
 
+  // create a map of useful parameters
+  std::map<std::string, double> my_params_d;
+  std::map<std::string, int> my_params_i;
+
+  //my_params_d["target_speed"] = 1.0;
+  my_params_i["my_lane"] = 1;
+  my_params_d["max_speed"] = 21.0;
+
   ifstream in_map_(map_file_.c_str(), ifstream::in);
 
   string line;
@@ -365,7 +373,8 @@ int main() {
   	map_waypoints_dy.push_back(d_y);
   }
 
-  h.onMessage([&my_lane,&target_speed,&max_speed,&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+  //h.onMessage([&my_params_i,&my_params_d,&my_lane,&target_speed,&max_speed,&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+  h.onMessage([&target_speed,&my_params_d,&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -409,8 +418,10 @@ int main() {
 
           	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
             //
-            std::cout << "---------------------------- target lane = " << my_lane << "  ----------------------------\n";
-            std::cout << "size of previous path = " << previous_path_x.size() << std::endl;
+            // unwrap parameters
+            double max_speed = my_params_d["max_speed"];
+            //double target_speed = my_params_d["target_speed"];
+            //int my_lane = my_params_i["my_lane"];
 
             // define some useful parameters
             double delta_t = 0.02; // 20 ms
@@ -419,8 +430,10 @@ int main() {
             speed_limit *= (1.6e3 / 3600); // m/s
             double alpha = 10.0;
 
+            //std::cout << "size of previous path = " << previous_path_x.size() << std::endl;
+
             // find cars in the vicinity
-            my_lane = find_lane_number(car_d);
+            int my_lane = find_lane_number(car_d);
             std::cout << "car_s = " << car_s << " , car_d = " << car_d << " , my lane = " << my_lane << std::endl;
             std::map<std::string, vector<double>> nearby_cars = get_nearby_car_info(my_lane, car_s, sensor_fusion);
 
@@ -428,7 +441,8 @@ int main() {
             // calculate collision possibility 
             
             double time_to_collision = 1; // seconds
-            double keep_distance_front = 30; //time_to_collision * target_speed; //10.0; // meters
+            //double keep_distance_front = time_to_collision * target_speed; //30.0; // meters
+            double keep_distance_front = time_to_collision * target_speed < 20 ? 20 : time_to_collision * target_speed;
             double keep_distance_behind = 10; //time_to_collision * target_speed; //10.0; // meters
             bool collision_ahead = false;
             bool collision_left = false;
@@ -480,7 +494,7 @@ int main() {
             anchor_pts_y.push_back(second_last_y);
             anchor_pts_y.push_back(last_y);
 
-            // add a few equally separated points ahead
+            // before adding more points, check for available lanes
             int slow_down = 0;
             int change_lane;
             int move_to_lane = my_lane;
@@ -531,15 +545,18 @@ int main() {
             // TODO: improve lane changing logic to avoid boxed in situation
             // TODO: increase speed but keep lateral acceleration under control
             // TODO: preferred lane is the one with maximum available free road ahead
-            // TODO: fix abrupt stopping issue
+            // TODO: parametrize speed etc and pass as a map
 
             // if coast is clear, stay in the middle lane
             if ((!collision_ahead) && (!collision_left) && (!collision_right))
                 move_to_lane = 1;
 
             std::cout << "move_to lane = " << move_to_lane << std::endl;
-            double ds = 40.0; //30.0;
-            for (int i=0; i<3; i++)
+            // now add a few equally separated points ahead
+            //double ds = 40.0; // target_speed * 2; //40.0; //30.0;
+            double ds = target_speed * 2.5 < 40 ? 40 : target_speed * 2.5; //40.0; //30.0;
+            int additional_points = 3;
+            for (int i=0; i<additional_points; i++)
             {
                 double temp_s = car_s + (i + 1) * ds;
                 double temp_d = move_to_lane * 4 + 2;
@@ -608,6 +625,21 @@ int main() {
                     target_speed += 0.16; //0.224;
                 std::cout << "speed = " << target_speed << std::endl;
             }
+
+            // check if the final point ends up near lane center
+        if (target_speed > 116)
+        {
+            int np = next_x_vals.size();
+            assert (np == 50);
+            double angle = atan((next_y_vals[np] - next_y_vals[np-1])/(next_x_vals[np] - next_x_vals[np-1]));
+            vector<double> last_p = getFrenet(next_x_vals[np], next_y_vals[np], angle, map_waypoints_x, map_waypoints_y);
+            double d1 = abs(last_p[1] - move_to_lane * 4 - 2);
+            std::cout << next_x_vals[np] << ", " << next_y_vals[np] << std::endl;
+            std::cout << next_x_vals[np-1] << ", " << next_y_vals[np-1] << std::endl;
+            std::cout << last_p[0] << ", " << last_p[1] << ", " << angle << ", " << move_to_lane << std::endl;
+            std::cout << "distance from lane center = " << d1 << std::endl;
+            assert (d1 < 0.4);
+        }
 
 
           	msgJson["next_x"] = next_x_vals;
