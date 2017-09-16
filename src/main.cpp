@@ -624,29 +624,14 @@ int main() {
                 next_x_vals.push_back(new_x);
                 next_y_vals.push_back(new_y);
 
-                // check speed and change it gradually if required
-                if ((target_speed > 0.99 * max_speed) || (slow_down == 1))
-                    target_speed -= my_params_d["delta_speed"];
-                else if (target_speed < max_speed)
-                    target_speed += my_params_d["delta_speed"];
-                std::cout << "speed = " << target_speed << std::endl;
             }
 
-            // check if the final point ends up near lane center
-        if (target_speed > 116)
-        {
-            int np = next_x_vals.size();
-            assert (np == 50);
-            double angle = atan((next_y_vals[np] - next_y_vals[np-1])/(next_x_vals[np] - next_x_vals[np-1]));
-            vector<double> last_p = getFrenet(next_x_vals[np], next_y_vals[np], angle, map_waypoints_x, map_waypoints_y);
-            double d1 = abs(last_p[1] - move_to_lane * 4 - 2);
-            std::cout << next_x_vals[np] << ", " << next_y_vals[np] << std::endl;
-            std::cout << next_x_vals[np-1] << ", " << next_y_vals[np-1] << std::endl;
-            std::cout << last_p[0] << ", " << last_p[1] << ", " << angle << ", " << move_to_lane << std::endl;
-            std::cout << "distance from lane center = " << d1 << std::endl;
-            assert (d1 < 0.4);
-        }
-
+            // check speed and change it gradually if required
+            if ((target_speed > 0.99 * max_speed) || (slow_down == 1))
+                target_speed -= my_params_d["delta_speed"];
+            else if (target_speed < max_speed)
+                target_speed += my_params_d["delta_speed"];
+            std::cout << "speed = " << target_speed << std::endl;
 
           	msgJson["next_x"] = next_x_vals;
           	msgJson["next_y"] = next_y_vals;
