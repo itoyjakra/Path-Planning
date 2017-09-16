@@ -547,8 +547,12 @@ int main() {
             // TODO: parametrize speed etc and pass as a map
 
             // if coast is clear, stay in the middle lane
-            if ((!collision_ahead) && (!collision_left) && (!collision_right))
-                move_to_lane = 1;
+            if (my_lane == move_to_lane)
+                if (((my_lane == 0) && (!collision_right)) || ((my_lane == 2) && (!collision_left)))
+                    move_to_lane = 1;
+
+            //if ((!collision_ahead) && (!collision_left) && (!collision_right))
+                //move_to_lane = 1;
 
             std::cout << "move_to lane = " << move_to_lane << std::endl;
             // now add a few equally separated points ahead
@@ -638,6 +642,7 @@ int main() {
             std::cout << "last points in projected path: ";
             std::cout << next_x_vals[next_x_vals.size()-1] << ", ";
             std::cout << next_y_vals[next_y_vals.size()-1] << "\n";
+            std::cout << "---0---\n";
 
           	auto msg = "42[\"control\","+ msgJson.dump()+"]";
 
