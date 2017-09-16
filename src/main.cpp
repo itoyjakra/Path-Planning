@@ -350,6 +350,7 @@ int main() {
   //my_params_d["target_speed"] = 1.0;
   my_params_i["my_lane"] = 1;
   my_params_d["max_speed"] = 22.4;
+  my_params_d["time_interval"] = 0.02; // 20 ms
   my_params_d["time_to_next_anchor"] = 2.5;
   my_params_d["min_dist_to_next_anchor"] = 40.0;
   my_params_d["delta_speed"] = 0.16;
@@ -423,15 +424,7 @@ int main() {
             //
             // unwrap parameters
             double max_speed = my_params_d["max_speed"];
-            //double target_speed = my_params_d["target_speed"];
-            //int my_lane = my_params_i["my_lane"];
-
-            // define some useful parameters
-            double delta_t = 0.02; // 20 ms
-            double dist_inc = 0.5; // meters
-            double speed_limit = 50; // miles/hr
-            speed_limit *= (1.6e3 / 3600); // m/s
-            double alpha = 10.0;
+            double delta_t = my_params_d["time_interval"];
 
             //std::cout << "size of previous path = " << previous_path_x.size() << std::endl;
 
