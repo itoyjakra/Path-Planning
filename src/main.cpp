@@ -352,6 +352,7 @@ int main() {
   my_params_d["max_speed"] = 22.4;
   my_params_d["time_interval"] = 0.02; // 20 ms
   my_params_d["time_to_next_anchor"] = 2.5;
+  my_params_d["time_to_collision"] = 1.0; // seconds
   my_params_d["min_dist_to_next_anchor"] = 40.0;
   my_params_d["delta_speed"] = 0.16;
 
@@ -425,6 +426,7 @@ int main() {
             // unwrap parameters
             double max_speed = my_params_d["max_speed"];
             double delta_t = my_params_d["time_interval"];
+            double time_to_collision = my_params_d["time_to_collision"];
 
             //std::cout << "size of previous path = " << previous_path_x.size() << std::endl;
 
@@ -436,7 +438,6 @@ int main() {
 
             // calculate collision possibility 
             
-            double time_to_collision = 1; // seconds
             //double keep_distance_front = time_to_collision * target_speed; //30.0; // meters
             double keep_distance_front = time_to_collision * target_speed < 20 ? 20 : time_to_collision * target_speed;
             double keep_distance_behind = 10; //time_to_collision * target_speed; //10.0; // meters
@@ -451,8 +452,10 @@ int main() {
             double dist_right_behind = locate_car(car_s, target_speed, "right_behind", time_to_collision, nearby_cars);
 
             if (dist_same_front < keep_distance_front) collision_ahead = true;
-            if ((dist_left_front < keep_distance_front || dist_left_behind > -keep_distance_behind) && my_lane > 0) collision_left = true;
-            if ((dist_right_front < keep_distance_front || dist_right_behind > -keep_distance_behind) && my_lane < 2) collision_right = true;
+            //if ((dist_left_front < keep_distance_front || dist_left_behind > -keep_distance_behind) && my_lane > 0) collision_left = true;
+            //if ((dist_right_front < keep_distance_front || dist_right_behind > -keep_distance_behind) && my_lane < 2) collision_right = true;
+            if ((dist_left_front < keep_distance_front || abs(dist_left_behind) < keep_distance_behind) && my_lane > 0) collision_left = true;
+            if ((dist_right_front < keep_distance_front || abs(dist_right_behind) < keep_distance_behind) && my_lane < 2) collision_right = true;
 
             std::cout << "distances (keep, lb, lf, same, rf, rb) \n";
             std::cout << keep_distance_front << " --- " << dist_left_behind << " .. " << dist_left_front << " .. " << dist_same_front << " .. " << dist_right_front << " .. " << dist_right_behind << std::endl;
@@ -593,7 +596,8 @@ int main() {
             }
 
             // include the new points to make the list size to 50
-            int n_rem_pts = 50 - prev_path_size;
+            int n_plan_ahead_pts = target_speed * 2.5 < 50 ? 50 : target_speed * 2.5;
+            int n_rem_pts = n_plan_ahead_pts - prev_path_size;
             double inc_x = 0.0;
             for (int i=0; i<n_rem_pts; i++)
             {
@@ -618,6 +622,7 @@ int main() {
                 next_y_vals.push_back(new_y);
 
             }
+            std::cout << "number of plan ahead points = " << n_plan_ahead_pts << std::endl;
 
             // check speed and change it gradually if required
             if ((target_speed > 0.99 * max_speed) || (slow_down == 1))
