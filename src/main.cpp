@@ -440,7 +440,7 @@ int main() {
             
             //double keep_distance_front = time_to_collision * target_speed; //30.0; // meters
             double keep_distance_front = time_to_collision * target_speed < 20 ? 20 : time_to_collision * target_speed;
-            double keep_distance_behind = 10; //time_to_collision * target_speed; //10.0; // meters
+            double keep_distance_behind = 8; //time_to_collision * target_speed; //10.0; // meters
             bool collision_ahead = false;
             bool collision_left = false;
             bool collision_right = false;
@@ -566,7 +566,7 @@ int main() {
             //
             double dist_to_next_anchor = target_speed * my_params_d["time_to_next_anchor"];
             double ds = dist_to_next_anchor < my_params_d["min_dist_to_next_anchor"] ? my_params_d["min_dist_to_next_anchor"] : dist_to_next_anchor;
-            int additional_points = 3;
+            int additional_points = 4;
             for (int i=0; i<additional_points; i++)
             {
                 double temp_s = car_s + (i + 1) * ds;
@@ -593,7 +593,7 @@ int main() {
             s.set_points(anchor_pts_x, anchor_pts_y);
 
             // create the additional path that we want to append to the existing path
-            double target_x = 30.0;
+            double target_x = 100.0;
             double target_y = s(target_x);
             double target_d = sqrt(target_x*target_x + target_y*target_y);
 
@@ -605,7 +605,12 @@ int main() {
             }
 
             // include the new points to make the list size to 50
-            int n_plan_ahead_pts = target_speed * 2.5 < 50 ? 50 : target_speed * 2.5;
+            int min_pts;
+            if (my_lane == move_to_lane) // stay in lane
+                min_pts = 50;
+            else // changing lane
+                min_pts = 100;
+            int n_plan_ahead_pts = target_speed * 2.5 < min_pts ? min_pts : target_speed * 2.5;
             int n_rem_pts = n_plan_ahead_pts - prev_path_size;
             double inc_x = 0.0;
             for (int i=0; i<n_rem_pts; i++)
@@ -634,7 +639,7 @@ int main() {
             std::cout << "number of plan ahead points = " << n_plan_ahead_pts << std::endl;
 
             // check speed and change it gradually if required
-            if ((target_speed > 0.99 * max_speed) || (slow_down == 1))
+            if ((target_speed > 0.95 * max_speed) || (slow_down == 1))
                 target_speed -= my_params_d["delta_speed"];
             else if (target_speed < max_speed)
                 target_speed += my_params_d["delta_speed"];
