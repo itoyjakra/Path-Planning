@@ -547,9 +547,14 @@ int main() {
             // TODO: parametrize speed etc and pass as a map
 
             // if coast is clear, stay in the middle lane
-            if (my_lane == move_to_lane)
-                if (((my_lane == 0) && (!collision_right)) || ((my_lane == 2) && (!collision_left)))
+            if (my_lane == move_to_lane) // lane change is not planned
+            {
+                double safe_dist = 100;
+                bool right_move = ((my_lane == 0) && (!collision_right) && (dist_right_front > safe_dist));
+                bool left_move = ((my_lane == 2) && (!collision_left) && (dist_left_front > safe_dist));
+                if (right_move || left_move)
                     move_to_lane = 1;
+            }
 
             //if ((!collision_ahead) && (!collision_left) && (!collision_right))
                 //move_to_lane = 1;
