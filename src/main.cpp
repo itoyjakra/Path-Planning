@@ -353,8 +353,8 @@ int main() {
   my_params_d["time_interval"] = 0.02; // 20 ms
   my_params_d["time_to_next_anchor"] = 2.5;
   my_params_d["time_to_collision"] = 1.0; // seconds
-  my_params_d["min_dist_to_next_anchor"] = 40.0;
-  my_params_d["delta_speed"] = 0.16;
+  my_params_d["min_dist_to_next_anchor"] = 50.0;
+  my_params_d["delta_speed"] = 0.15;
 
   ifstream in_map_(map_file_.c_str(), ifstream::in);
 
@@ -540,6 +540,8 @@ int main() {
                     slow_down = 1;
                 }
             }
+            if (collision_ahead && (previous_path_x.size() > max_speed * 2.5))
+                slow_down = 2;
 
             // TODO: improve lane changing logic to avoid boxed in situation
             // TODO: increase speed but keep lateral acceleration under control
@@ -566,7 +568,7 @@ int main() {
             //
             double dist_to_next_anchor = target_speed * my_params_d["time_to_next_anchor"];
             double ds = dist_to_next_anchor < my_params_d["min_dist_to_next_anchor"] ? my_params_d["min_dist_to_next_anchor"] : dist_to_next_anchor;
-            int additional_points = 4;
+            int additional_points = 3;
             for (int i=0; i<additional_points; i++)
             {
                 double temp_s = car_s + (i + 1) * ds;
@@ -593,7 +595,7 @@ int main() {
             s.set_points(anchor_pts_x, anchor_pts_y);
 
             // create the additional path that we want to append to the existing path
-            double target_x = 100.0;
+            double target_x = 100; //5 * max_speed; // 100.0;
             double target_y = s(target_x);
             double target_d = sqrt(target_x*target_x + target_y*target_y);
 
@@ -605,12 +607,21 @@ int main() {
             }
 
             // include the new points to make the list size to 50
+            /*
+            */
             int min_pts;
             if (my_lane == move_to_lane) // stay in lane
-                min_pts = 50;
+                min_pts = 30; //50;
             else // changing lane
-                min_pts = 100;
+                min_pts = 60; //100;
             int n_plan_ahead_pts = target_speed * 2.5 < min_pts ? min_pts : target_speed * 2.5;
+            /*
+            int n_plan_ahead_pts;
+            if (my_lane == move_to_lane)
+                n_plan_ahead_pts = 2.5 * max_speed;
+            else
+                n_plan_ahead_pts = 5 * max_speed;
+            */
             int n_rem_pts = n_plan_ahead_pts - prev_path_size;
             double inc_x = 0.0;
             for (int i=0; i<n_rem_pts; i++)
@@ -639,10 +650,12 @@ int main() {
             std::cout << "number of plan ahead points = " << n_plan_ahead_pts << std::endl;
 
             // check speed and change it gradually if required
-            if ((target_speed > 0.95 * max_speed) || (slow_down == 1))
+            if ((target_speed > 0.96 * max_speed) || (slow_down == 1))
                 target_speed -= my_params_d["delta_speed"];
             else if (target_speed < max_speed)
                 target_speed += my_params_d["delta_speed"];
+            else if (slow_down == 2)
+                target_speed -= 0.8 * my_params_d["delta_speed"];
             std::cout << "speed = " << target_speed << std::endl;
 
           	msgJson["next_x"] = next_x_vals;
